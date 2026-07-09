@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taller · Aislamiento y validación de tareas automatizables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14213D;          /* estructura / texto principal */
+    --ink-soft:#40506B;     /* texto secundario */
+    --paper:#EEF1F4;        /* fondo página (neutro frío, no crema) */
+    --card:#FFFFFF;
+    --line:#DCE2E8;
+    --teal:#0E7C86;         /* input / rutina / OK */
+    --violet:#5B3FD6;       /* núcleo IA / prompt / decisión */
+    --amber:#C9860B;        /* humano / atención */
+    --red:#CE3F42;          /* regla / riesgo / alerta */
+    --teal-wash:#E4F1F2;
+    --violet-wash:#ECE7FB;
+    --amber-wash:#F8EFD9;
+    --red-wash:#FAE6E6;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(20,33,61,.04),0 8px 24px rgba(20,33,61,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Inter",system-ui,sans-serif;line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px}
+
+  /* ---------- Header ---------- */
+  header{
+    background:var(--ink);color:#fff;padding:44px 0 40px;margin-bottom:36px;
+    border-bottom:5px solid var(--violet);
+  }
+  .head-inner{max-width:1080px;margin:0 auto;padding:0 24px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:#9FB0D0;margin:0 0 14px;
+  }
+  h1{
+    font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:clamp(28px,4.4vw,44px);
+    line-height:1.08;margin:0 0 18px;letter-spacing:-.01em;
+  }
+  .lead{font-size:17px;color:#C9D4E6;max-width:62ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{
+    font-family:"IBM Plex Mono",monospace;font-size:12.5px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+    padding:7px 13px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;
+  }
+  .chip b{color:#fff;font-weight:500}
+  .chip span{color:#9FB0D0}
+
+  /* ---------- Reglas band ---------- */
+  .rules{
+    background:var(--card);border:1px solid var(--line);border-left:5px solid var(--red);
+    border-radius:var(--radius);padding:24px 26px;margin-bottom:38px;box-shadow:var(--shadow);
+  }
+  .rules h2{
+    font-family:"Space Grotesk",sans-serif;font-size:14px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--red);margin:0 0 16px;
+  }
+  .rules ol{margin:0;padding:0;list-style:none;counter-reset:r;display:grid;gap:13px}
+  .rules li{counter-increment:r;padding-left:40px;position:relative;font-size:15px}
+  .rules li::before{
+    content:counter(r);position:absolute;left:0;top:-1px;width:26px;height:26px;
+    background:var(--red-wash);color:var(--red);border-radius:8px;
+    font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:13px;
+    display:grid;place-items:center;
+  }
+  .rules b{color:var(--ink)}
+
+  /* ---------- Layout: rail + blocks ---------- */
+  .layout{display:grid;grid-template-columns:210px 1fr;gap:34px;align-items:start}
+
+  /* Timeline rail */
+  .rail{position:sticky;top:24px}
+  .rail h3{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0 0 18px;
+  }
+  .rail ul{list-style:none;margin:0;padding:0;position:relative}
+  .rail ul::before{content:"";position:absolute;left:13px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .rail li{position:relative;padding:0 0 18px 40px;font-size:13px;line-height:1.3}
+  .rail a{color:var(--ink-soft);text-decoration:none;display:block;cursor:pointer}
+  .rail a:hover{color:var(--ink)}
+  .rail .dot{position:absolute;left:6px;top:2px;width:16px;height:16px;border-radius:50%;
+    background:var(--card);border:3px solid var(--line);z-index:1}
+  .rail li.t-teal .dot{border-color:var(--teal)}
+  .rail li.t-violet .dot{border-color:var(--violet)}
+  .rail li.t-amber .dot{border-color:var(--amber)}
+  .rail li.t-break .dot{border-color:var(--ink-soft);background:var(--ink-soft)}
+  .rail .rt{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);display:block}
+  .rail .rn{font-weight:600;color:var(--ink)}
+
+  /* Block cards */
+  .blocks{display:grid;gap:22px}
+  .block{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 30px;box-shadow:var(--shadow);scroll-margin-top:20px;
+    border-top:4px solid var(--line);
+  }
+  .block.teal{border-top-color:var(--teal)}
+  .block.violet{border-top-color:var(--violet)}
+  .block.amber{border-top-color:var(--amber)}
+  .bhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .bnum{
+    font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:15px;
+    width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;
+  }
+  .teal .bnum{background:var(--teal-wash);color:var(--teal)}
+  .violet .bnum{background:var(--violet-wash);color:var(--violet)}
+  .amber .bnum{background:var(--amber-wash);color:var(--amber)}
+  .btitle{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:21px;margin:0;line-height:1.2;flex:1;min-width:220px}
+  .btags{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+  .tag{font-family:"IBM Plex Mono",monospace;font-size:11.5px;padding:4px 11px;border-radius:6px;
+    background:var(--paper);color:var(--ink-soft);border:1px solid var(--line)}
+  .tag.time{color:var(--ink);font-weight:500}
+  .teal .tag.mode{background:var(--teal-wash);color:var(--teal);border-color:transparent}
+  .violet .tag.mode{background:var(--violet-wash);color:var(--violet);border-color:transparent}
+  .amber .tag.mode{background:var(--amber-wash);color:var(--amber);border-color:transparent}
+  .block p{margin:14px 0;font-size:15px}
+  .block ul.plain{margin:12px 0;padding-left:0;list-style:none;display:grid;gap:9px}
+  .block ul.plain li{padding-left:26px;position:relative;font-size:15px}
+  .block ul.plain li::before{content:"";position:absolute;left:2px;top:9px;width:8px;height:8px;
+    border-radius:2px;background:var(--teal)}
+  .violet ul.plain li::before{background:var(--violet)}
+  .amber ul.plain li::before{background:var(--amber)}
+  .out{
+    margin-top:18px;font-size:14px;background:var(--paper);border-radius:9px;padding:12px 16px;
+    border-left:3px solid var(--ink-soft);
+  }
+  .out b{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:3px}
+
+  /* Prompt block + copy */
+  .prompt{margin:18px 0 6px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#FBFCFD}
+  .prompt-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 14px;background:var(--ink);color:#fff}
+  .prompt-label{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em;display:flex;align-items:center;gap:9px}
+  .prompt-label .pd{width:9px;height:9px;border-radius:50%;background:var(--violet)}
+  .prompt-label.favor .pd{background:var(--teal)}
+  .prompt-label.contra .pd{background:var(--amber)}
+  .copybtn{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;cursor:pointer;
+    background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);
+    padding:6px 14px;border-radius:7px;transition:background .15s,transform .1s;display:flex;align-items:center;gap:7px}
+  .copybtn:hover{background:rgba(255,255,255,.22)}
+  .copybtn:active{transform:scale(.96)}
+  .copybtn.done{background:var(--teal);border-color:var(--teal)}
+  .prompt pre{
+    margin:0;padding:16px 18px;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.6;
+    color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+
+  /* Tables */
+  .tbl-scroll{overflow-x:auto;margin:16px 0 4px;border-radius:10px;border:1px solid var(--line)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th{background:var(--ink);color:#fff;font-family:"Space Grotesk",sans-serif;font-weight:500;
+    text-align:left;padding:11px 14px;font-size:12.5px}
+  td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink-soft)}
+  tr:nth-child(even) td{background:#F9FAFB}
+
+  /* Break divider */
+  .brk{display:flex;align-items:center;gap:16px;margin:6px 0;padding:16px 24px;
+    background:var(--ink);color:#fff;border-radius:var(--radius)}
+  .brk .bt{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:22px}
+  .brk .bl{font-size:14px;color:#B7C3D8}
+  .brk .clock{font-family:"IBM Plex Mono",monospace;font-size:13px;background:rgba(255,255,255,.1);
+    padding:6px 12px;border-radius:7px;margin-left:auto}
+
+  /* Footer sections */
+  .foot{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:38px}
+  .fcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 28px;box-shadow:var(--shadow)}
+  .fcard h2{font-family:"Space Grotesk",sans-serif;font-size:17px;margin:0 0 16px;display:flex;align-items:center;gap:10px}
+  .fcard h2 .ico{width:10px;height:10px;border-radius:3px}
+  .fcard.tutor h2 .ico{background:var(--amber)}
+  .fcard.check h2 .ico{background:var(--teal)}
+  .fcard ul{margin:0;padding-left:0;list-style:none;display:grid;gap:12px;font-size:14px}
+  .fcard.tutor li{padding-left:22px;position:relative}
+  .fcard.tutor li::before{content:"!";position:absolute;left:0;top:0;color:var(--amber);font-weight:700;font-family:"Space Grotesk",sans-serif}
+  .fcard.tutor b{color:var(--ink)}
+  .fcard.check li{padding-left:30px;position:relative;min-height:20px;display:flex;align-items:center}
+  .fcard.check li::before{content:"";position:absolute;left:0;top:1px;width:19px;height:19px;
+    border:2px solid var(--teal);border-radius:5px}
+
+  footer.end{text-align:center;color:var(--ink-soft);font-size:12.5px;
+    font-family:"IBM Plex Mono",monospace;margin-top:44px;padding-top:22px;border-top:1px solid var(--line)}
+
+  @media (max-width:820px){
+    .layout{grid-template-columns:1fr}
+    .rail{position:static;margin-bottom:8px;background:var(--card);border:1px solid var(--line);
+      border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+    .foot{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+  @media print{
+    header{background:#fff;color:#000;border-bottom:2px solid #000}
+    .eyebrow,.lead,.chip span{color:#333}
+    h1,.chip b{color:#000}
+    .rail{display:none}.layout{grid-template-columns:1fr}
+    .block,.rules,.fcard{box-shadow:none;break-inside:avoid}
+    .copybtn{display:none}
+    .prompt-bar{background:#eee;color:#000}
+    body{background:#fff}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-inner">
+    <p class="eyebrow">Sesión 1 de tutoría · Taller práctico</p>
+    <h1>Aislamiento y validación de tareas automatizables</h1>
+    <p class="lead">De "tenemos un proceso" a <b style="color:#fff">qué parte específica vale la pena automatizar, con qué nivel de autonomía y por qué</b> — con evidencia trazable de IA generativa, no solo una intuición.</p>
+    <div class="meta">
+      <span class="chip"><span>Duración</span><b>≈132 min · mín. 120</b></span>
+      <span class="chip"><span>Bloques analíticos</span><b>sin techo rígido</b></span>
+      <span class="chip"><span>Reemplaza</span><b>Reencuadre + Trabajo en equipos</b></span>
+      <span class="chip"><span>Alimenta</span><b>Entregable parcial · secciones 3 y 4</b></span>
+    </div>
+    <div style="margin-top:18px;background:rgba(201,134,11,.16);border:1px solid rgba(201,134,11,.4);border-radius:10px;padding:13px 16px;font-size:14px;color:#F0D9A8">
+      <b style="color:#F5E4BE">Pre-trabajo obligatorio:</b> cada equipo llega con su proceso ya identificado y descrito en una o dos frases. Sin esto, el Bloque 2 se convierte en "inventar el caso desde cero" y arrastra la sesión.
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Reglas -->
+  <section class="rules">
+    <h2>Las 3 reglas del taller — leer antes de empezar</h2>
+    <ol>
+      <li><b>Los criterios de validación van antes que el prompt.</b> Nunca le pregunten al modelo "¿debería automatizar esto?" — tiende a decir que sí casi siempre. Primero se clasifica con los criterios; después se usa el prompt para poner a prueba un criterio puntual.</li>
+      <li><b>El prompt es andamiaje, no oráculo.</b> Genera hipótesis y evidencia. La decisión la firma el equipo, no el modelo.</li>
+      <li><b>Se prioriza, no se agota.</b> No van a clasificar todo el proceso — solo las 5 a 7 tareas de mayor impacto.</li>
+    </ol>
+  </section>
+
+  <div class="layout">
+
+    <!-- Rail -->
+    <nav class="rail" aria-label="Secuencia del taller">
+      <h3>Secuencia · 0 → ≈132′</h3>
+      <ul>
+        <li class="t-teal"><span class="dot"></span><a data-scroll="b1" tabindex="0" role="link"><span class="rt">00–15′</span><span class="rn">1 · Apertura</span></a></li>
+        <li class="t-teal"><span class="dot"></span><a data-scroll="b2" tabindex="0" role="link"><span class="rt">15–30′</span><span class="rn">2 · Descomposición</span></a></li>
+        <li class="t-teal"><span class="dot"></span><a data-scroll="b3" tabindex="0" role="link"><span class="rt">30–45′</span><span class="rn">3 · Priorización</span></a></li>
+        <li class="t-break"><span class="dot"></span><a data-scroll="brk" tabindex="0" role="link"><span class="rt">45–55′</span><span class="rn">Descanso</span></a></li>
+        <li class="t-violet"><span class="dot"></span><a data-scroll="b4" tabindex="0" role="link"><span class="rt">55–75′</span><span class="rn">4 · Clasificación</span></a></li>
+        <li class="t-violet"><span class="dot"></span><a data-scroll="b5" tabindex="0" role="link"><span class="rt">75–100′</span><span class="rn">5 · Contraste</span></a></li>
+        <li class="t-amber"><span class="dot"></span><a data-scroll="b6" tabindex="0" role="link"><span class="rt">100–120′</span><span class="rn">6 · Síntesis</span></a></li>
+        <li class="t-amber"><span class="dot"></span><a data-scroll="b7" tabindex="0" role="link"><span class="rt">120–132′</span><span class="rn">7 · Debrief</span></a></li>
+      </ul>
+    </nav>
+
+    <!-- Blocks -->
+    <main class="blocks">
+
+      <!-- B1 -->
+      <article class="block teal" id="b1">
+        <div class="bhead"><span class="bnum">1</span><h2 class="btitle">Apertura + enunciado del proceso</h2></div>
+        <div class="btags"><span class="tag time">15 min</span><span class="tag mode">8′ plenaria + 7′ equipo</span></div>
+        <p><b>Primeros 8 min · plenaria (tutor).</b> Encuadre — nadie se queda solo escuchando de más:</p>
+        <ul class="plain">
+          <li>Recordar el eje visto en clase: <b>¿quién decide el siguiente paso?</b> — el humano en cada turno (Prompt), el diseñador en tiempo de diseño (Workflow), o el modelo en tiempo de ejecución (Agente).</li>
+          <li>Explicar las 3 reglas del taller.</li>
+          <li>Mostrar la matriz vacía y el flujo de los bloques.</li>
+          <li>Aclarar el formato de "tarea": <b>verbo + objeto</b> (ej. "clasificar el correo", "extraer el monto de la factura"), nunca un proceso completo.</li>
+        </ul>
+        <p><b>Últimos 7 min · equipos activos.</b> Cada equipo escribe en <b>una sola frase</b> el proceso que va a trabajar hoy. Nadie pasivo desde el minuto cero.</p>
+        <div class="out"><b>Salida</b>Enunciado del proceso en una frase, por equipo.</div>
+      </article>
+
+      <!-- B2 -->
+      <article class="block teal" id="b2">
+        <div class="bhead"><span class="bnum">2</span><h2 class="btitle">Descomposición individual de tareas</h2></div>
+        <div class="btags"><span class="tag time">15 min</span><span class="tag mode">Individual</span></div>
+        <p>Cada integrante, por su cuenta, descompone el caso de uso del equipo en tareas atómicas. Sin discutir todavía — esto evita que una sola persona arrastre la lista del grupo.</p>
+        <div class="prompt">
+          <div class="prompt-bar">
+            <span class="prompt-label"><span class="pd"></span>Prompt guía · opcional · individual</span>
+            <button class="copybtn" data-target="p2">Copiar</button>
+          </div>
+          <pre id="p2">Actúa como analista de procesos. Te voy a describir un proceso de negocio.
+Tu tarea es descomponerlo en tareas atómicas usando el formato "verbo + objeto"
+(ej.: "clasificar el correo", "extraer el monto de la factura").
+
+Proceso: [pega aquí la descripción de tu proceso]
+
+Instrucciones:
+- Lista cada tarea en una línea separada.
+- No agrupes tareas distintas en una sola línea.
+- Si una tarea implica una decisión de negocio (no solo transformar datos),
+  márcala con [DECISIÓN].
+- No propongas automatización todavía — solo descompón.</pre>
+        </div>
+        <div class="out"><b>Salida</b>Una lista individual de tareas atómicas por integrante.</div>
+      </article>
+
+      <!-- B3 -->
+      <article class="block teal" id="b3">
+        <div class="bhead"><span class="bnum">3</span><h2 class="btitle">Consolidación y priorización en equipo</h2></div>
+        <div class="btags"><span class="tag time">15 min</span><span class="tag mode">Equipo</span></div>
+        <ul class="plain">
+          <li>Cada integrante comparte su lista (2–3 min por persona).</li>
+          <li>Fusionan en una sola lista, eliminando duplicados.</li>
+          <li>Seleccionan <b>5 a 7 tareas de mayor impacto</b> (por volumen, tiempo consumido, o frecuencia con la que se hacen mal hoy). El resto queda registrado, pero no se trabaja hoy.</li>
+        </ul>
+        <div class="out"><b>Salida</b>Lista consolidada y priorizada de 5–7 tareas. Es la que entra a la matriz del Bloque 4.</div>
+      </article>
+
+      <!-- Break -->
+      <div class="brk" id="brk">
+        <span class="bt">Descanso</span>
+        <span class="bl">Se descansa con la lista de tareas ya lista, justo antes del trabajo analítico.</span>
+        <span class="clock">45′ → 55′ · 10 min</span>
+      </div>
+
+      <!-- B4 -->
+      <article class="block violet" id="b4">
+        <div class="bhead"><span class="bnum">4</span><h2 class="btitle">Clasificación por 4 criterios + mapeo</h2></div>
+        <div class="btags"><span class="tag time">20 min · sin techo</span><span class="tag mode">Equipo</span></div>
+        <p>Para cada una de las 5–7 tareas priorizadas, completar la matriz:</p>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Tarea</th><th>Volumen / repetitividad</th><th>Estabilidad de la regla<br>(fija vs. juicio)</th><th>Costo del error<br>(tolerable / moderado / crítico)</th><th>Calidad / disponibilidad del dato</th><th>Categoría</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>[tarea 1]</td><td></td><td></td><td></td><td></td><td>Prompt / Workflow / Agente / No automatizar</td></tr>
+              <tr><td>[tarea 2]</td><td></td><td></td><td></td><td></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prompt">
+          <div class="prompt-bar">
+            <span class="prompt-label"><span class="pd"></span>Prompt guía · por tarea (sobre todo las dudosas)</span>
+            <button class="copybtn" data-target="p4">Copiar</button>
+          </div>
+          <pre id="p4">Actúa como auditor escéptico de automatización. Te voy a dar la descripción
+de una tarea.
+
+Tarea: [descripción de la tarea]
+Contexto: [volumen aproximado, frecuencia, quién la hace hoy]
+
+Evalúa SOLO estos dos aspectos, sin opinar todavía si se debe automatizar:
+
+1. ¿La regla de decisión es estable (siempre se aplica igual) o requiere
+   criterio humano caso a caso? Da un ejemplo concreto de una excepción
+   que rompería una regla fija.
+2. Si esta tarea falla o se ejecuta mal, ¿cuál es la consecuencia más
+   probable? Clasifícala como tolerable, moderada o crítica, y explica
+   por qué.
+
+No concluyas si la tarea debe automatizarse. Solo entrega tu análisis
+de estos dos puntos.</pre>
+        </div>
+        <div class="out"><b>Salida</b>Matriz completa con las 5–7 tareas clasificadas.</div>
+      </article>
+
+      <!-- B5 -->
+      <article class="block violet" id="b5">
+        <div class="bhead"><span class="bnum">5</span><h2 class="btitle">Prompts de contraste bidireccional</h2></div>
+        <div class="btags"><span class="tag time">25 min · sin techo</span><span class="tag mode">Equipo</span></div>
+        <p>Tomen las <b>1–2 tareas "caso límite"</b> (sin consenso o con categoría dudosa). Para cada una, corran <b>ambos</b> prompts y contrasten las respuestas — nunca solo uno.</p>
+        <div class="prompt">
+          <div class="prompt-bar">
+            <span class="prompt-label favor"><span class="pd"></span>Prompt A · A FAVOR</span>
+            <button class="copybtn" data-target="p5a">Copiar</button>
+          </div>
+          <pre id="p5a">Actúa como consultor que defiende la automatización de esta tarea.
+
+Tarea: [descripción]
+Clasificación preliminar del equipo: [Prompt / Workflow / Agente]
+Evidencia reunida en el Bloque 4: [pega aquí los hallazgos]
+
+Construye el mejor caso posible a favor de automatizar esta tarea con
+el nivel de autonomía indicado. Usa solo la evidencia entregada, no
+inventes cifras. Sé específico sobre qué se gana (tiempo, consistencia,
+escala) y bajo qué condiciones el caso es más fuerte.</pre>
+        </div>
+        <div class="prompt">
+          <div class="prompt-bar">
+            <span class="prompt-label contra"><span class="pd"></span>Prompt B · EN CONTRA</span>
+            <button class="copybtn" data-target="p5b">Copiar</button>
+          </div>
+          <pre id="p5b">Actúa como consultor escéptico de esta automatización.
+
+Tarea: [descripción]
+Clasificación preliminar del equipo: [Prompt / Workflow / Agente]
+Evidencia reunida en el Bloque 4: [pega aquí los hallazgos]
+
+Construye el mejor caso posible EN CONTRA de automatizar esta tarea con
+el nivel de autonomía indicado, o a favor de un nivel de autonomía menor.
+Señala qué se pierde, qué riesgo se introduce, y bajo qué condiciones
+NO valdría la pena.</pre>
+        </div>
+        <ul class="plain">
+          <li>Leer ambas respuestas lado a lado.</li>
+          <li>El equipo decide — no el modelo — cuál argumento pesa más y por qué.</li>
+        </ul>
+        <div class="out"><b>Salida</b>Por cada tarea límite: ambos outputs guardados + la decisión del equipo con su justificación.</div>
+      </article>
+
+      <!-- B6 -->
+      <article class="block amber" id="b6">
+        <div class="bhead"><span class="bnum">6</span><h2 class="btitle">Síntesis: decisión argumentada</h2></div>
+        <div class="btags"><span class="tag time">20 min · sin techo</span><span class="tag mode">Equipo</span></div>
+        <p>Con la matriz del Bloque 4 y el contraste del Bloque 5, redactan la síntesis que llevan a la Clínica de dudas. Cubre directamente las secciones 3 y 4 del entregable parcial.</p>
+        <div class="prompt">
+          <div class="prompt-bar">
+            <span class="prompt-label"><span class="pd" style="background:var(--amber)"></span>Plantilla de síntesis · para diligenciar</span>
+            <button class="copybtn" data-target="p6">Copiar</button>
+          </div>
+          <pre id="p6">## Decisión argumentada — [Nombre del caso/proceso]
+
+| Tarea | Categoría asignada | Criterio decisivo | Evidencia (prompt usado) | Decisión final del equipo |
+|-------|--------------------|-------------------|--------------------------|---------------------------|
+| ...   | Prompt / Workflow / Agente / No automatizar | ... | [resumen o enlace del prompt/salida] | ... |
+
+**Síntesis del equipo (3–5 líneas):**
+[¿Por qué la automatización aporta o no valor en este caso? ¿Qué parte
+específica del proceso se optimiza? ¿Qué queda deliberadamente fuera
+y por qué?]</pre>
+        </div>
+        <div class="out"><b>Salida</b>Síntesis de decisión argumentada, lista para la Clínica de dudas.</div>
+      </article>
+
+      <!-- B7 -->
+      <article class="block amber" id="b7">
+        <div class="bhead"><span class="bnum">7</span><h2 class="btitle">Debrief de sala</h2></div>
+        <div class="btags"><span class="tag time">12 min</span><span class="tag mode">Plenaria</span></div>
+        <p>Cierre con discusión de grupo — el único momento en que la conversación sale del equipo y se comparte con toda la sala.</p>
+        <ul class="plain">
+          <li>2–3 equipos comparten <b>una tarea que cambió de categoría</b> al correr el contraste del Bloque 5 (de agente a workflow, de automatizable a "no delegar", etc.).</li>
+          <li>El tutor pregunta: <b>¿qué criterio hizo cambiar la decisión?</b> — para que el aprendizaje sea explícito y transferible al resto de la sala.</li>
+          <li>Cierre: recordar que la decisión argumentada es el insumo de la Clínica de dudas y del entregable parcial.</li>
+        </ul>
+        <div class="out"><b>Salida</b>Aprendizajes cruzados visibles para toda la sala; cada equipo se lleva al menos un contraste ajeno como referencia.</div>
+      </article>
+  </div>
+
+  <!-- Footer: tutor + checklist -->
+  <div class="foot">
+    <section class="fcard tutor">
+      <h2><span class="ico"></span>Guía rápida para el tutor</h2>
+      <p style="margin:0 0 14px;font-size:13.5px;color:var(--ink-soft)">Señales de alerta a corregir en el momento, no en la Clínica:</p>
+      <ul>
+        <li><b>Saturación trivial:</b> priorizan tareas fáciles en vez de las de mayor impacto → redirigir a la lista de volumen/tiempo del Bloque 3.</li>
+        <li><b>Prompt como oráculo:</b> citan la respuesta del modelo como decisión ("el modelo dijo que sí") → recordar la Regla 2.</li>
+        <li><b>Discuten el proceso, no la tarea:</b> si no logran clasificar, la "tarea" sigue siendo un proceso compuesto → forzar a descomponer un nivel más.</li>
+        <li><b>Solo corrieron el Prompt A:</b> sin contraste, el sesgo direccional no se resolvió → exigir el Prompt B antes de cerrar.</li>
+      </ul>
+    </section>
+    <section class="fcard check">
+      <h2><span class="ico"></span>Checklist de salida</h2>
+      <p style="margin:0 0 14px;font-size:13.5px;color:var(--ink-soft)">Antes de la Clínica de dudas:</p>
+      <ul>
+        <li>Matriz de clasificación completa (5–7 tareas)</li>
+        <li>Al menos 1–2 tareas límite con ambos prompts de contraste ejecutados</li>
+        <li>Síntesis de decisión argumentada redactada</li>
+        <li>Al menos un equipo presentó su reclasificación en el debrief</li>
+      </ul>
+    </section>
+  </div>
+
+  <footer class="end">Taller · Aislamiento y validación de tareas automatizables · Productividad, Automatización y Workflows con IA</footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.copybtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.getAttribute('data-target'));
+      var text = el ? el.innerText : '';
+      var done = function(){
+        var orig = 'Copiar';
+        btn.textContent = 'Copiado ✓';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = orig; btn.classList.remove('done'); }, 1800);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(text, done); });
+      } else { fallback(text, done); }
+    });
+  });
+  function fallback(text, cb){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta); cb();
+  }
+
+  // Navegación interna del rail: sin href, todo por JS, así el marco padre no lo trata como enlace externo
+  function scrollToBlock(id){
+    var target = document.getElementById(id);
+    if(target){
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+  document.querySelectorAll('.rail a[data-scroll]').forEach(function(link){
+    link.addEventListener('click', function(e){
+      e.preventDefault();
+      scrollToBlock(link.getAttribute('data-scroll'));
+    });
+    link.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        scrollToBlock(link.getAttribute('data-scroll'));
+      }
+    });
+  });
+</script>
+</body>
+</html>
